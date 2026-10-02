@@ -21,7 +21,7 @@ from pathlib import Path
 RAW = (Path.cwd() / "raw").resolve()
 WIKI = Path("wiki")
 HEADER = re.compile(r"^> (Raw|Fingerprint|Monitored|Status): (.*)$", re.M)
-LINK = re.compile(r"\[([^\]]+)\]\(([^)]+\.md)\)")
+LINK = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")  # any target; claims() keeps raw/ ones
 NUMBER = re.compile(r"(?<![\w.,])\d[\d.,]*%?(?![\w.,])")
 QUOTE = re.compile(r"[\"\u201c]([^\"\u201d]{8,})[\"\u201d]")  # shorter quoted words are not claims
 
@@ -189,7 +189,8 @@ The same command runs as a CI step on pull requests so the gate holds for every 
   `Monitored:`.
 - **Binary sources** (PDFs, images). Store the binary in `raw/` and add a sibling text
   extraction (`report.pdf` and `report.pdf.txt`) produced once by a deterministic tool. Link
-  claims to the text file so the grounding check can read it.
+  claims to the text file so the grounding check can read it; the check follows any link into
+  `raw/`, whatever its extension, and never reads a path that resolves outside it.
 - **External URLs.** A URL is not immutable. Save a dated snapshot into `raw/` and link the
   snapshot; keep the URL in the snapshot's first line for attribution.
 - **Multiple repositories.** Fingerprint with `git:<repo-name>@<sha>` and keep one vault per
