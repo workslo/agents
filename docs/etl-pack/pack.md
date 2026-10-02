@@ -15,7 +15,7 @@
 - **Still yours to build:** HTML→Markdown converter, link rewriting, machine manifest + count check, secrets/PII pass, golden-file tests, question-set pilot.
 - **Skip** the RAG skills, Celery/background jobs, warehouse data-quality tooling, and SAST.
 - **Install:** copy 8 skill folders into `.github/skills/` (see Install).
-- **Bugs found:** one reproduced in grounded-vault; several more read-only findings (see Caveats).
+- **Bugs found:** one in grounded-vault, reproduced and fixed in #2; several more read-only findings (see Caveats).
 
 ---
 
@@ -59,7 +59,7 @@
 
 | Asset | Verdict | Use it for | Watch out |
 |---|---|---|---|
-| `documentation-standards/skills/grounded-vault` | **Adapt** | Provenance header, grounding gate, `archive/` + `log.md` | Drift keys on git commits of *code* — swap for Confluence page version. `.txt` source links fail the gate (bug) |
+| `documentation-standards/skills/grounded-vault` | **Adapt** | Provenance header, grounding gate, `archive/` + `log.md` | Drift keys on git commits of *code* — swap for Confluence page version |
 | `documentation-standards/skills/hads` | **Use** | Module body format for agents + humans | No validator shipped (~30 lines to write) |
 | `docs/authoring.md` | **Use** | Packaging modules as skills | Only matters for the agent-facing copy |
 | `python-development/skills/python-error-handling` | **Use** | One bad page never stops a run | Key results by page id, not list index |
@@ -93,7 +93,7 @@
 |---|---|
 | HTML → Markdown converter | Parser + per-element/macro handlers + golden-file test per macro |
 | Link + image rewriting | `pageId → path` map first; rewrite links; copy attachments; fail on unresolved |
-| Provenance per claim | grounded-vault header + check script (with the regex fix) |
+| Provenance per claim | grounded-vault header + check script |
 | Staleness vs. Confluence | Fingerprint `confluence:<pageId>@v<version>`; compare on each export |
 | HADS validator | Script the skill's 5 rules into your quality gates |
 | Upstream deletions | Pages missing from a new export → `archive/` with reason |
@@ -111,7 +111,7 @@
 
 | Where | Issue | Status |
 |---|---|---|
-| grounded-vault check script | Only `.md` links count as sources; the skill's own guidance says link `.txt` extractions → those claims fail `--strict` | **Reproduced** · upstream fix queued as a task |
+| grounded-vault check script | Only `.md` links count as sources; the skill's own guidance says link `.txt` extractions → those claims fail `--strict` | **Fixed** in #2 · repro passes after the fix |
 | python-resilience | 429 retried on a 1–10 s backoff, ignoring `Retry-After` | Read |
 | embedding-strategies | Default preprocessor deletes all non-word chars (Markdown, code) | Read |
 | embedding-strategies | Header chunker splits on `# ` inside code fences | Inferred from code |
@@ -137,7 +137,7 @@
 
 | Skill | Plugin | Why |
 |---|---|---|
-| `grounded-vault` | documentation-standards | Store layout, provenance, grounding gate — apply the `.md`-regex fix in your copy |
+| `grounded-vault` | documentation-standards | Store layout, provenance, grounding gate (install from a revision that includes #2) |
 | `hads` | documentation-standards | Module body format |
 | `python-error-handling` | python-development | Per-page partial failures |
 | `python-observability` | python-development | Run-scoped structured logs |
@@ -198,7 +198,7 @@
 - Grounding rule — `documentation-standards/skills/grounded-vault/SKILL.md:57` "A compiled page states only what a source supports" · V
 - Commit gate — `documentation-standards/skills/grounded-vault/SKILL.md:97` "python3 scripts/check_vault.py --strict" · V
 - Drift keys on code commits — `documentation-standards/skills/grounded-vault/SKILL.md:51` "`Fingerprint:` is the short commit hash" · V; replace `documentation-standards/skills/grounded-vault/references/details.md:75` "def drift" · I
-- Bug: `.md`-only link regex — `documentation-standards/skills/grounded-vault/references/details.md:24` "LINK = re.compile" vs. `documentation-standards/skills/grounded-vault/references/details.md:190` "**Binary sources**" · V (reproduced: `.txt` link → "has no raw/ source link", exit 1; `.md` link passes)
+- Bug, now fixed: the link regex accepted only `.md` targets while the binary-sources guidance links `.txt` extractions. Reproduced before #2 (`.txt` link → "has no raw/ source link", exit 1); same repro passes after #2. Fixed regex — `documentation-standards/skills/grounded-vault/references/details.md:24` "any target; claims() keeps raw/ ones" · V
 - Quotes split by inline tags won't match HTML raw; link the text extraction · I
 
 **hads**
@@ -246,7 +246,7 @@
 **Repo tooling**
 - Dead-link check skips fenced + inline code — `tools/doc_gardener.py:441` "def _strip_code" · V
 - Relative resolution from the file's folder — `tools/doc_gardener.py:471` "base = WORKTREE if target.startswith" · V
-- Image links match too (`![alt](path)` contains `[alt](path)`) — `tools/doc_gardener.py:435` "_LINK_PATTERN" · I
+- Image links match too: the pattern has no leading-character anchor, so an image link's bracket-paren part matches — `tools/doc_gardener.py:435` "_LINK_PATTERN" · I
 
 **Evaluation snippets**
 - Retrieval metrics: precision@k, recall@k, MRR, nDCG — `llm-application-dev/skills/embedding-strategies/references/details.md:436` "def evaluate_retrieval_quality(" · V
@@ -280,6 +280,6 @@
 
 **Absence checks**
 - No HTML→MD tooling: repo-wide `grep -w` for BeautifulSoup, bs4, markdownify, html2text, pandoc, lxml, html.parser, xhtml → 0 hits · V
-- Confluence mentions: 4, all one-liners — see `docs/etl-pack/candidates.md` · V
+- Confluence mentions: 4, all one-liners — repo-wide `grep -rniw confluence` over `plugins/` · V
 
 </details>
